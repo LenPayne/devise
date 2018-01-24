@@ -191,6 +191,10 @@ module Devise
   mattr_accessor :unlock_in
   @@unlock_in = 1.hour
 
+  # The time you want failed attempts to expire after. Zero disables.
+  mattr_accessor :expire_failed_in
+  @@expire_failed_in = 0
+
   # Defines which key will be used when recovering the password for an account
   mattr_accessor :reset_password_keys
   @@reset_password_keys = [:email]
