@@ -18,17 +18,19 @@ module Devise
     #   * +unlock_strategy+: unlock the user account by :time, :email, :both or :none.
     #   * +unlock_in+: the time you want to lock the user after to lock happens. Only available when unlock_strategy is :time or :both.
     #   * +unlock_keys+: the keys you want to use when locking and unlocking an account
+    #   * +expire_failed+: the time you want failed attempts to expire after. Zero disables.
     #
     module Lockable
       extend  ActiveSupport::Concern
 
-      delegate :lock_strategy_enabled?, :unlock_strategy_enabled?, to: "self.class"
+      delegate :lock_strategy_enabled?, :unlock_strategy_enabled?, :expire_failed_enabled?, to: "self.class"
 
       def self.required_fields(klass)
         attributes = []
         attributes << :failed_attempts if klass.lock_strategy_enabled?(:failed_attempts)
         attributes << :locked_at if klass.unlock_strategy_enabled?(:time)
         attributes << :unlock_token if klass.unlock_strategy_enabled?(:email)
+        attributes << :last_failed_at if klass.expire_failed_enabled?
 
         attributes
       end
@@ -99,6 +101,14 @@ module Devise
         if super && !access_locked?
           true
         else
+          if expire_failed_enabled?
+            if last_failed_at.present? && last_failed_at < self.class.expire_failed_in.ago
+              self.failed_attempts = 0
+              self.last_failed_at = nil
+            else
+              self.last_failed_at = Time.now
+            end
+          end
           self.failed_attempts ||= 0
           self.failed_attempts += 1
           if attempts_exceeded?
@@ -193,7 +203,11 @@ module Devise
           self.lock_strategy == strategy
         end
 
-        Devise::Models.config(self, :maximum_attempts, :lock_strategy, :unlock_strategy, :unlock_in, :unlock_keys, :last_attempt_warning)
+        def expire_failed_enabled?
+          self.expire_failed_in.present? && self.expire_failed_in > 0
+        end
+
+        Devise::Models.config(self, :maximum_attempts, :lock_strategy, :unlock_strategy, :unlock_in, :unlock_keys, :last_attempt_warning, :expire_failed_in)
       end
     end
   end

@@ -4,4 +4,8 @@ Warden::Manager.after_set_user except: :fetch do |record, warden, options|
   if record.respond_to?(:failed_attempts) && warden.authenticated?(options[:scope])
     record.update_attribute(:failed_attempts, 0) unless record.failed_attempts.to_i.zero?
   end
+
+  if record.respond_to?(:last_failed_at) && warden.authenticated?(options[:scope])
+    record.update_attribute(:last_failed_at, nil) unless record.failed_attempts.nil?
+  end
 end
